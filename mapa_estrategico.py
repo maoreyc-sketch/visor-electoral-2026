@@ -7,12 +7,9 @@ import requests
 st.set_page_config(layout="wide", page_title="Visor Electoral Pro 2026")
 st.title("🗺️ Radar Geopolítico de Precisión - Proyección 2026")
 
-# 2. Carga de datos geolocalizados
 @st.cache_data
 def cargar_datos():
-    # USAMOS EL NUEVO ARCHIVO CON COORDENADAS
-    df = pd.read_csv("Cerebro_Geolocalizado_2026.csv")
-    return df
+    return pd.read_csv("Cerebro_Geolocalizado_2026.csv")
 
 @st.cache_data
 def cargar_geojson():
@@ -22,48 +19,80 @@ def cargar_geojson():
 df = cargar_datos()
 colombia_geojson = cargar_geojson()
 
-# 3. Panel Lateral
-st.sidebar.header("⚙️ Filtros Estratégicos")
+# 2. Panel Lateral: Filtros Estratégicos
+st.sidebar.header("⚙️ Filtros de Escenario")
 lista_afinidades = df['Afinidad_Politica'].dropna().unique().tolist()
-afinidad_sel = st.sidebar.selectbox("Fuerza Política:", lista_afinidades)
+
+# ⚡ ACTUALIZACIÓN: Selector Múltiple (Cargado con todas por defecto)
+afinidad_sel = st.sidebar.multiselect("Fuerzas Políticas en Disputa:", lista_afinidades, default=lista_afinidades)
 
 lista_deptos = ["NACIONAL"] + sorted(df['Departamento'].unique().tolist())
 depto_sel = st.sidebar.selectbox("Enfocar Departamento:", lista_deptos)
 
-# 4. Procesamiento
-df_filtrado = df[df['Afinidad_Politica'] == afinidad_sel]
-color_map = {"IZQUIERDA": "#EF553B", "DERECHA": "#636EFA", "CENTRO": "#00CC96", "NEUTRAL": "#AB63FA"}
+if not afinidad_sel:
+    st.warning("⚠️ Selecciona al menos una fuerza política para visualizar el escenario.")
+    st.stop()
 
-# 5. Lógica de Visualización Dual
+# 3. Procesamiento y Paleta de Colores
+df_filtrado = df[df['Afinidad_Politica'].isin(afinidad_sel)]
+# Ajusta estos colores según los nombres exactos de tu base
+color_map = {"IZQUIERDA": "#EF553B", "DERECHA": "#636EFA", "CENTRO": "#00CC96", "NEUTRAL": "#AB63FA", "VOTO BLANCO": "#D3D3D3", "VOTO NULO": "#808080"} 
+
 if depto_sel == "NACIONAL":
-    # --- VISTA MACRO: POLÍGONOS ---
-    df_mapa = df_filtrado.groupby('Departamento')['Votos'].sum().reset_index()
+    # --- VISTA MACRO: POLÍGONOS DE DOMINIO ---
+    # Calculamos quién gana en cada departamento
+    df_agrupado = df_filtrado.groupby(['Departamento', 'Afinidad_Politica'])['Votos'].sum().reset_index()
+    idx_ganador = df_agrupado.groupby('Departamento')['Votos'].idxmax()
+    df_macro = df_agrupado.loc[idx_ganador].rename(columns={'Afinidad_Politica': 'Fuerza Dominante', 'Votos': 'Votos Ganador'})
+    
     fig = px.choropleth_mapbox(
-        df_mapa, geojson=colombia_geojson, locations='Departamento',
-        featureidkey='properties.NOMBRE_DPT', color='Votos',
-        color_continuous_scale="Reds" if afinidad_sel == "IZQUIERDA" else "Blues",
+        df_macro, geojson=colombia_geojson, locations='Departamento',
+        featureidkey='properties.NOMBRE_DPT', color='Fuerza Dominante',
+        color_discrete_map=color_map,
+        hover_name='Departamento',
+        hover_data={'Departamento': False, 'Fuerza Dominante': True, 'Votos Ganador': ':,'},
         mapbox_style="carto-positron", zoom=4.5, center={"lat": 4.57, "lon": -74.29},
-        opacity=0.5, labels={'Votos': 'Votos Proyectados'}
+        opacity=0.6, title="Mapa de Dominio Nacional"
     )
 else:
-    # --- VISTA MICRO: BURBUJAS TÁCTICAS ---
+    # --- VISTA MICRO: BURBUJAS DE DISPUTA TÁCTICA ---
     df_micro = df_filtrado[df_filtrado['Departamento'] == depto_sel]
-    # Agrupamos por municipio para la burbuja
-    df_micro = df_micro.groupby(['Municipio', 'Latitud', 'Longitud'])['Votos'].sum().reset_index()
     
+    # ⚡ ACTUALIZACIÓN: Pivoteamos la data para tener columnas por partido
+    df_pivot = df_micro.pivot_table(index=['Municipio', 'Latitud', 'Longitud'], 
+                                    columns='Afinidad_Politica', 
+                                    values='Votos', 
+                                    aggfunc='sum').fillna(0)
+    
+    # Calculamos el total de votos en disputa y quién va ganando
+    fuerzas_presentes = [col for col in df_pivot.columns]
+    df_pivot['Total Votos Escenario'] = df_pivot[fuerzas_presentes].sum(axis=1)
+    df_pivot['Fuerza Dominante'] = df_pivot[fuerzas_presentes].idxmax(axis=1)
+    df_pivot = df_pivot.reset_index()
+    
+    # ⚡ ACTUALIZACIÓN: Configuración milimétrica del cuadro emergente (Tooltip)
+    # Ocultamos lat/lon y mostramos el resumen de fuerzas
+    hover_dict = {'Latitud': False, 'Longitud': False, 'Fuerza Dominante': True, 'Total Votos Escenario': ':,'}
+    for fuerza in fuerzas_presentes:
+        hover_dict[fuerza] = ':,' # El ':,' le pone separador de miles a los votos
+
     fig = px.scatter_mapbox(
-        df_micro, lat="Latitud", lon="Longitud", size="Votos",
-        color_discrete_sequence=[color_map.get(afinidad_sel, "#636EFA")],
-        hover_name="Municipio", size_max=20, zoom=7,
-        mapbox_style="carto-positron", title=f"Dispersión en {depto_sel}",
-        labels={'Votos': 'Caudal Electoral'}
+        df_pivot, lat="Latitud", lon="Longitud", size="Total Votos Escenario",
+        color="Fuerza Dominante",
+        color_discrete_map=color_map,
+        hover_name="Municipio", 
+        hover_data=hover_dict,
+        size_max=35, zoom=6.5,
+        mapbox_style="carto-positron", title=f"Radiografía de Dispersión en {depto_sel}"
     )
 
 fig.update_layout(margin={"r":0,"t":0,"l":0,"b":0}, height=600)
 st.plotly_chart(fig, use_container_width=True)
 
-# 6. Tabla de Inteligencia
-st.subheader(f"📊 Detalle Territorial: {depto_sel}")
-df_tabla = df_filtrado if depto_sel == "NACIONAL" else df_filtrado[df_filtrado['Departamento'] == depto_sel]
-resumen = df_tabla.groupby('Municipio')['Votos'].sum().reset_index().sort_values('Votos', ascending=False)
-st.dataframe(resumen.head(10).style.format({"Votos": "{:,.0f}"}), use_container_width=True)
+# 4. Tabla de Inteligencia Actualizada
+st.subheader(f"📊 Tabla de Control: {depto_sel}")
+if depto_sel != "NACIONAL":
+    # Mostramos la tabla pivoteada para leer fácilmente los resultados por municipio
+    columnas_mostrar = ['Municipio', 'Fuerza Dominante', 'Total Votos Escenario'] + fuerzas_presentes
+    df_mostrar = df_pivot[columnas_mostrar].sort_values('Total Votos Escenario', ascending=False)
+    st.dataframe(df_mostrar.head(15).style.format({col: "{:,.0f}" for col in fuerzas_presentes + ['Total Votos Escenario']}), use_container_width=True)
