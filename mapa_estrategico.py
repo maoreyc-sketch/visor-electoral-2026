@@ -63,16 +63,15 @@ total_votos_escenario = df_filtrado['Votos'].sum()
 resumen_fuerzas = df_filtrado.groupby('Afinidad_Politica')['Votos'].sum().sort_values(ascending=False)
 
 # Creamos columnas visuales tipo "Dashboard"
-col1, col2, col3 = st.columns(3)
+col1, col2, = st.columns(2)
+
 
 with col1:
-    st.metric(label="🗳️ Votos Totales en Disputa", value=f"{total_votos_escenario:,.0f}")
-with col2:
     if len(resumen_fuerzas) > 0:
         fuerza_ganadora = resumen_fuerzas.index[0]
         votos_ganador = resumen_fuerzas.iloc[0]
         st.metric(label=f"🏆 Lidera: {fuerza_ganadora}", value=f"{votos_ganador:,.0f}")
-with col3:
+with col2:
     if len(resumen_fuerzas) > 1:
         fuerza_segundo = resumen_fuerzas.index[1]
         votos_segundo = resumen_fuerzas.iloc[1]
