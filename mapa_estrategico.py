@@ -18,6 +18,7 @@ def cargar_datos():
         "BOGOTA": "SANTAFE DE BOGOTA D.C",
         "BOGOTÁ": "SANTAFE DE BOGOTA D.C",
         "VALLE": "VALLE DEL CAUCA",
+        "NARIÑO":"NARIÑO",
         "SAN ANDRES": "ARCHIPIELAGO DE SAN ANDRES PROVIDENCIA Y SANTA CATALINA",
         "NARIÑO": "NARINO" # A veces el mapa no lee la Ñ
     }
