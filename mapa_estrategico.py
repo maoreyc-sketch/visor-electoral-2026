@@ -53,7 +53,34 @@ if not afinidad_sel:
 df_filtrado = df[df['Afinidad_Politica'].isin(afinidad_sel)]
 # Ajusta estos colores según los nombres exactos de tu base
 color_map = {"IZQUIERDA": "#EF553B", "DERECHA": "#636EFA", "CENTRO": "#00CC96", "NEUTRAL": "#AB63FA", "VOTO BLANCO": "#D3D3D3", "VOTO NULO": "#808080"} 
+# ----------------------------------------------------
+# ⚡ NUEVO: CUADRO EMERGENTE INICIAL (TARJETAS RESUMEN)
+# ----------------------------------------------------
+st.markdown("### 📊 Radiografía del Escenario Actual")
+total_votos_escenario = df_filtrado['Votos'].sum()
 
+# Calculamos los totales por cada fuerza seleccionada para el titular
+resumen_fuerzas = df_filtrado.groupby('Afinidad_Politica')['Votos'].sum().sort_values(ascending=False)
+
+# Creamos columnas visuales tipo "Dashboard"
+col1, col2, col3 = st.columns(3)
+
+with col1:
+    st.metric(label="🗳️ Votos Totales en Disputa", value=f"{total_votos_escenario:,.0f}")
+with col2:
+    if len(resumen_fuerzas) > 0:
+        fuerza_ganadora = resumen_fuerzas.index[0]
+        votos_ganador = resumen_fuerzas.iloc[0]
+        st.metric(label=f"🏆 Lidera: {fuerza_ganadora}", value=f"{votos_ganador:,.0f}")
+with col3:
+    if len(resumen_fuerzas) > 1:
+        fuerza_segundo = resumen_fuerzas.index[1]
+        votos_segundo = resumen_fuerzas.iloc[1]
+        st.metric(label=f"🥈 Segundo: {fuerza_segundo}", value=f"{votos_segundo:,.0f}")
+    else:
+        st.metric(label="📊 Estado", value="Escenario Único")
+st.markdown("---") # Una línea divisoria elegante antes del mapa
+# ----------------------------------------------------
 if depto_sel == "NACIONAL":
     # --- VISTA MACRO: POLÍGONOS DE DOMINIO ---
     # Calculamos quién gana en cada departamento
