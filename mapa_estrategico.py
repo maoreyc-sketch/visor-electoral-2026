@@ -11,16 +11,20 @@ st.title("🗺️ Radar Geopolítico de Precisión - Proyección 2026")
 def cargar_datos():
     df = pd.read_csv("Cerebro_Geolocalizado_2026.csv")
     
-    # --- DICCIONARIO TRADUCTOR PARA EL MAPA ---
+# --- DICCIONARIO TRADUCTOR PARA EL MAPA ---
     correcciones = {
         "BOGOTA D.C.": "SANTAFE DE BOGOTA D.C",
         "BOGOTÁ D.C.": "SANTAFE DE BOGOTA D.C",
         "BOGOTA": "SANTAFE DE BOGOTA D.C",
         "BOGOTÁ": "SANTAFE DE BOGOTA D.C",
         "VALLE": "VALLE DEL CAUCA",
-        "NARIÑO":"NARIÑO",
         "SAN ANDRES": "ARCHIPIELAGO DE SAN ANDRES PROVIDENCIA Y SANTA CATALINA",
-        "NARIÑO": "NARINO" # A veces el mapa no lee la Ñ
+        "NARINO": "NARIÑO",                       # ¡Devolvemos la Ñ que el mapa sí usa!
+        "NARIÑO": "NARIÑO", 
+        "NORTE SANTANDER": "NORTE DE SANTANDER",  # Ponemos el "DE"
+        "NORTE DE SANTANDER": "NORTE DE SANTANDER",
+        "GUAJIRA": "LA GUAJIRA",                  # Prevenimos el error con La Guajira
+        "LA GUAJIRA": "LA GUAJIRA"
     }
     # Forzamos los nombres para que el mapa los reconozca a la perfección
     df['Departamento'] = df['Departamento'].replace(correcciones)
