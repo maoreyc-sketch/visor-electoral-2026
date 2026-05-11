@@ -22,7 +22,7 @@ def cargar_datos():
         "NARINO": "NARIÑO",                       # ¡Devolvemos la Ñ que el mapa sí usa!
         "NARIÑO": "NARIÑO", 
         "NORTE SANTANDER": "NORTE DE SANTANDER",  # Ponemos el "DE"
-        "NORTE DE SANTANDER": "NORTE DE SANTANDER",
+        "NORTE DE SAN": "NORTE DE SANTANDER",
         "GUAJIRA": "LA GUAJIRA",                  # Prevenimos el error con La Guajira
         "LA GUAJIRA": "LA GUAJIRA"
     }
